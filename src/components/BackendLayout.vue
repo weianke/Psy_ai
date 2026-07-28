@@ -2,7 +2,7 @@
   <!-- 这里推荐 min-h-screen 也可以用 h-screen -->
   <div class="h-screen">
     <el-container class="h-full">
-      <el-aside width="200px">
+      <el-aside width="240px">
         <Sidebar />
       </el-aside>
       <el-container class="h-full">
