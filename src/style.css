@@ -1,0 +1,91 @@
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  border: none;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+input,
+button,
+select,
+textarea {
+  outline: none;
+  border: none;
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: transparent;
+}
+
+textarea {
+  resize: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: normal;
+}
+
+/* 滚动条美化（Mac/Chrome） */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 清除浮动工具类 */
+.clearfix::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* 文本省略 */
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ellipsis-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

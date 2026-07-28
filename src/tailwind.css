@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply m-0 p-0 h-full;
+  }
+  #app {
+    @apply h-full;
+  }
+  html {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+  }
+  body {
+    @apply bg-gray-50 text-gray-800 min-h-screen;
+  }
+}
+
+@layer components {
+  /* 在这里统一覆盖 Element Plus 组件样式 */
+}
+
+@layer utilities {
+  .flex-center {
+    @apply flex justify-center items-center;
+  }
+  .text-ellipsis {
+    @apply overflow-hidden whitespace-nowrap text-ellipsis;
+  }
+  .text-ellipsis-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
