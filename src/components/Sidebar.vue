@@ -12,14 +12,13 @@
     <!-- 侧边菜单 -->
     <el-menu
       :default-active="route.path"
-      @open="handleOpen"
-      @close="handleClose"
+       @select="handleMenuSelect"
       class="flex-1 overflow-y-auto"
     >
       <el-menu-item
-        v-for="item in backendRoute?.children"
-        :key="item.path"
-        :index="item.path"
+       v-for="item in backendRoute?.children"
+       :key="item.path"
+       :index="`${backendRoute.path}/${item.path}`"
       >
         <el-icon>
           <component :is="item.meta.icon"/>
@@ -38,11 +37,17 @@ const route = useRoute()
 const backendRoute = router.options.routes.find(item => item.path === '/back')
 const iconUrl = new URL('@/assets/images/hero.png', import.meta.url).href
 
-const handleOpen = (key, keyPath) => {
-  console.log(key, keyPath)
-}
-const handleClose = (key, keyPath) => {
-  console.log(key, keyPath)
+/**
+ * 菜单选中触发路由跳转
+ * @param path el-menu-item 的index（路由地址）
+ */
+const handleMenuSelect = (path) => {
+  console.log('选中的回调路径', path)
+  console.log('默认路径', route.path)
+  // 避免重复跳转当前页面
+  if (route.path !== path) {
+    router.push(path)
+  }
 }
 </script>
 
