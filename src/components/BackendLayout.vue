@@ -1,9 +1,11 @@
 <template>
-  <!-- 这里推荐 min-h-screen 也可以用 h-screen -->
   <div class="h-screen">
     <el-container class="h-full">
-      <el-aside width="264px" class="h-full">
-        <Sidebar />
+      <el-aside 
+        :width="asideWidth" 
+        class="h-full overflow-hidden"
+      >
+        <Sidebar :isCollapse="isCollapse"/>
       </el-aside>
       <el-container class="h-full">
         <el-header class="p-0 h-[76px]">
@@ -18,10 +20,21 @@
 </template>
 
 <script setup>
-import Sidebar from './Sidebar.vue';
+import { computed } from 'vue'
+import Sidebar from './Sidebar.vue'
 import Navbar from './Navbar.vue'
+import { useAdminStore } from '@/store/admin'
+import { storeToRefs } from 'pinia'
 
+const adminStore = useAdminStore()
+const { isCollapse } = storeToRefs(adminStore)
+// 只有两个固定值，减少连续布局计算
+const asideWidth = computed(() => isCollapse.value ? '64px' : '240px')
 </script>
 
 <style scoped>
+/* 降低transition开销，使用ease-out，减少卡顿感知 */
+:deep(.el-aside) {
+  transition: width 240ms ease-out;
+}
 </style>

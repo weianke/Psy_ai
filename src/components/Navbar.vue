@@ -1,8 +1,11 @@
 <template>
   <div class="navbar flex items-center justify-between bg-[#fff] w-full h-full p-[15px] border-b border-[#e5e7eb] shadow-[0_1px_4px_rgba(0,21,41,0.08)]">
     <div class="flex items-center space-x-[10px]">
-      <el-button>
-        <el-icon><Expand /></el-icon>
+      <el-button @click="handleCollapse">
+        <el-icon>
+          <Expand v-if="!isCollapse" />
+          <Fold v-else />
+        </el-icon>
       </el-button>
       <p>导航栏</p>
     </div>
@@ -15,7 +18,6 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <!-- 必须套 el-dropdown-item，绑定 command -->
             <el-dropdown-item command="logout" class="select-none">
               退出登录
             </el-dropdown-item>
@@ -27,17 +29,20 @@
 </template>
 
 <script setup>
-import { Expand, ArrowDown } from '@element-plus/icons-vue'
+import { Expand, Fold, ArrowDown } from '@element-plus/icons-vue'
+import { useAdminStore } from '@/store/admin'
+import { storeToRefs } from 'pinia'
+
+const adminStore = useAdminStore()
+const { isCollapse } = storeToRefs(adminStore)
+
+const handleCollapse = () => {
+  adminStore.toggleCollapse()
+}
 
 const handleCommand = (command) => {
-  console.log('command', command)
   if (command === 'logout') {
-    // 在这里写退出登录逻辑
-    console.log('执行退出登录')
+    console.log('退出登录')
   }
 }
 </script>
-
-<style scoped>
-
-</style>
