@@ -35,7 +35,7 @@ const router = useRouter()
 const route = useRoute()
 
 const backendRoute = router.options.routes.find(item => item.path === '/back')
-const iconUrl = new URL('@/assets/images/hero.png', import.meta.url).href
+const iconUrl = new URL('@/assets/images/机器人.png', import.meta.url).href
 
 /**
  * 菜单选中触发路由跳转

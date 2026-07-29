@@ -6,7 +6,9 @@
         <Sidebar />
       </el-aside>
       <el-container class="h-full">
-        <el-header>导航栏</el-header>
+        <el-header class="p-0">
+          <Navbar />
+        </el-header>
         <el-main class="overflow-auto">
           <router-view></router-view>
         </el-main>
