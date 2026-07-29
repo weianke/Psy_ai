@@ -6,11 +6,11 @@
         <Sidebar />
       </el-aside>
       <el-container class="h-full">
-        <el-header class="p-0">
+        <el-header class="p-0 h-[76px]">
           <Navbar />
         </el-header>
         <el-main class="overflow-auto">
-          <router-view></router-view>
+          <router-view class="p-[20px] bg-[#fff] min-h-[calc(100%-20px)]"></router-view>
         </el-main>
       </el-container>
     </el-container>
