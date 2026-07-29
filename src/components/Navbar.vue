@@ -1,5 +1,7 @@
 <template>
-  <div class="navbar flex items-center justify-between bg-[#fff] w-full h-full p-[15px] border-b border-[#e5e7eb] shadow-[0_1px_4px_rgba(0,21,41,0.08)]">
+  <div
+    class="navbar flex items-center justify-between bg-[#fff] w-full h-full p-[15px] border-b border-[#e5e7eb] shadow-[0_1px_4px_rgba(0,21,41,0.08)]"
+  >
     <div class="flex items-center space-x-[10px]">
       <el-button @click="handleCollapse">
         <el-icon>
@@ -18,7 +20,10 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="logout" class="select-none">
+            <el-dropdown-item
+              command="logout"
+              class="select-none"
+            >
               退出登录
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -29,24 +34,24 @@
 </template>
 
 <script setup>
-import { Expand, Fold, ArrowDown } from '@element-plus/icons-vue'
-import { useAdminStore } from '@/store/admin'
-import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
-import { computed } from 'vue'
-const route = useRoute()
+import { Expand, Fold, ArrowDown } from '@element-plus/icons-vue';
+import { useAdminStore } from '@/store/admin';
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
+import { computed } from 'vue';
+const route = useRoute();
 
-const pageTitle = computed(() => route.meta?.title || '导航栏')
-const adminStore = useAdminStore()
-const { isCollapse } = storeToRefs(adminStore)
+const pageTitle = computed(() => route.meta?.title || '导航栏');
+const adminStore = useAdminStore();
+const { isCollapse } = storeToRefs(adminStore);
 
 const handleCollapse = () => {
-  adminStore.toggleCollapse()
-}
+  adminStore.toggleCollapse();
+};
 
-const handleCommand = (command) => {
+const handleCommand = command => {
   if (command === 'logout') {
-    console.log('退出登录')
+    console.log('退出登录');
   }
-}
+};
 </script>
