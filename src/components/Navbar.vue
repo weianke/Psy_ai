@@ -7,7 +7,7 @@
           <Fold v-else />
         </el-icon>
       </el-button>
-      <p>导航栏</p>
+      <p>{{ pageTitle }}</p>
     </div>
     <div class="flex items-center">
       <el-dropdown @command="handleCommand">
@@ -32,7 +32,11 @@
 import { Expand, Fold, ArrowDown } from '@element-plus/icons-vue'
 import { useAdminStore } from '@/store/admin'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+const route = useRoute()
 
+const pageTitle = computed(() => route.meta?.title || '导航栏')
 const adminStore = useAdminStore()
 const { isCollapse } = storeToRefs(adminStore)
 
