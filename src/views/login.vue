@@ -1,7 +1,7 @@
 <template>
     <div class="container w-[384px]">
         <div class="title">
-            <div class="back-home mb-[60px]">
+            <div class="back-home mb-[60px]" @click="$router.push('/')">
                 <el-icon>
                     <Back />
                 </el-icon>
@@ -29,7 +29,8 @@
                     class="btn w-full mt-[20px]"
                     size="large"
                     type="primary"
-                    @click="submitForm(ruleFormRef)"
+                    :loading="loading"
+                    @click="submitForm"
                     >登录账户</el-button
                 >
             </el-form>
@@ -46,27 +47,59 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { Back } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { login } from '@/api/admin'
 
+const router = useRouter()
 const ruleFormRef = ref()
+const loading = ref(false)
 
 const formData = reactive({
     username: '',
     password: '',
 })
 
-const rules = reactive({
+// 表单规则无需响应式，直接普通对象
+const rules = {
     username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
     password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-})
+}
 
-const submitForm = async formEl => {
-    if (!formEl) return
-    await formEl.validate((valid, fields) => {
-        if (valid) {
-            // 建议浅拷贝输出，和之前搜索组件思路一致
-            console.log({ ...formData })
+const submitForm = async () => {
+    if (!ruleFormRef.value) return
+    try {
+        await ruleFormRef.value.validate()
+        loading.value = true
+
+        // ❗重点：传递 formData，不是 fields！
+        const data = await login(formData)
+
+        if (!data.token) {
+            ElMessage.warning('登录失败，请检查账号密码')
+            return
         }
-    })
+
+        // 存储登录信息
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('userInfo', JSON.stringify(data.userInfo))
+        ElMessage.success('登录成功')
+        // 跳转首页
+        router.push('/')
+    } catch (err) {
+        console.error(err)
+    } finally {
+        loading.value = false
+    }
 }
 </script>
-<style lang="scss" scoped></style>
+
+<style lang="scss" scoped>
+.back-home {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+</style>
