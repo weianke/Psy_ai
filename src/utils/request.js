@@ -4,7 +4,7 @@ import router from '@/router'
 
 const service = axios.create({
     baseURL: import.meta.env.VITE_BASE_URL, // 请求前缀
-    timeout: 5000, // 请求超时时间2
+    timeout: 5000, // 请求超时时间
 })
 
 // 请求拦截器
