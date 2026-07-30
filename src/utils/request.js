@@ -11,7 +11,7 @@ const service = axios.create({
 service.interceptors.request.use(
     config => {
         const token = localStorage.getItem('token')
-        // 登录接口不携带token2
+        // 登录接口不携带token
         if (token) {
             config.headers['token'] = token
         }
