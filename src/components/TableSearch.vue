@@ -1,13 +1,25 @@
 <template>
     <el-form :model="formData" ref="ruleFormRef">
         <el-row :gutter="24">
-            <template v-for="item in formItemAttrs" :key="item.prop">
-                <el-col v-bind="item.col">
+            <!-- 直接循环 props.formItem，不要走 computed 中转 -->
+            <template v-for="item in props.formItem" :key="item.prop">
+                <el-col v-bind="COL_GRID">
                     <el-form-item :label="item.label" :prop="item.prop">
-                        <component v-model="formData[item.prop]" :is="getCompName(item.comp)" :placeholder="item.placeholder">
+                        <component
+                            v-model="formData[item.prop]"
+                            :is="getCompName(item.comp)"
+                            :placeholder="item.placeholder"
+                            :key="JSON.stringify(item.options)"
+                        >
                             <!-- Select下拉选项插槽 -->
                             <template #default v-if="item.comp === 'select'">
-                                <el-option v-for="opt in item.options" :key="opt.value" :label="opt.label" :value="opt.value" />
+                                <el-option label="全部" value=""></el-option>
+                                <el-option
+                                    v-for="opt in item.options"
+                                    :key="opt.value"
+                                    :label="opt.label"
+                                    :value="opt.value"
+                                />
                             </template>
                         </component>
                     </el-form-item>
@@ -25,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 
 // 栅格布局常量
 const COL_GRID = { xs: 24, sem: 12, md: 8, lg: 6, xl: 6 }
@@ -42,14 +54,6 @@ const props = defineProps({
 
 const emit = defineEmits(['search'])
 
-// 不修改父组件传入原始prop，map生成全新对象
-const formItemAttrs = computed(() => {
-    return props.formItem.map(item => ({
-        ...item,
-        col: COL_GRID,
-    }))
-})
-
 // 组件名称映射
 const getCompName = comp => {
     const compMap = {
@@ -60,7 +64,7 @@ const getCompName = comp => {
     return compMap[comp] ?? 'ElInput'
 }
 
-// 查询事件：传递浅拷贝对象，隔离内部响应式数据
+// 查询事件
 const handleSearch = () => {
     emit('search', { ...formData })
 }
