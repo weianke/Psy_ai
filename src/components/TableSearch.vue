@@ -1,5 +1,5 @@
 <template>
-  <el-form :model="formData">
+  <el-form :model="formData" ref="ruleFormRef">
     <el-row :gutter="24">
       <template v-for="item in formItemAttrs" :key="item.prop">
         <el-col v-bind="item.col">
@@ -17,16 +17,17 @@
     <el-row>
       <el-form-item>
         <el-button type="primary" @click="handleSearch">查询</el-button>
-        <el-button @click="handleReset">重置</el-button>
+        <el-button @click="handleReset(ruleFormRef)">重置</el-button>
       </el-form-item>
     </el-row>
   </el-form>
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { ref, computed, reactive } from 'vue'
 
 const formData = reactive({})
+const ruleFormRef = ref()
 
 const props = defineProps({
   formItem: {
@@ -64,10 +65,9 @@ const handleSearch = () => {
   emit('search', { ...formData }) // 浅拷贝，防止父组件直接修改内部响应式对象
 }
 
-const handleReset = () => {
-  // 重置表单，清空所有字段
-  for (const key in formData) {
-    formData[key] = undefined
-  }
+const handleReset = formRef => {
+  if (!formRef) return
+  formRef.resetFields()
+  handleSearch()
 }
 </script>
