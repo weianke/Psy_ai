@@ -51,10 +51,12 @@ import { Back } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { login } from '@/api/admin'
+import { useAdminStore } from '@/store/admin'
 
 const router = useRouter()
 const ruleFormRef = ref()
 const loading = ref(false)
+const adminStore = useAdminStore()
 
 const formData = reactive({
     username: '',
@@ -82,11 +84,15 @@ const submitForm = async () => {
         }
 
         // 存储登录信息
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('userInfo', JSON.stringify(data.userInfo))
+        adminStore.setLoginData(data)
         ElMessage.success('登录成功')
-        // 跳转首页
-        router.push('/')
+
+        // 根据用户角色决定跳转的路径
+        if (data.userInfo.userType === 2) {
+            router.push('/back/dashboard')
+        } else {
+            // 用户页面
+        }
     } catch (err) {
         console.error(err)
     } finally {
