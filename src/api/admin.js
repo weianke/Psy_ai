@@ -17,3 +17,18 @@ export const categoryTree = () => {
 export const getCategoryList = params => {
     return service.get('/knowledge/article/page', { params })
 }
+
+// 上传图片
+export const uploadFile = (file, businessInfo) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('businessType', 'ARTICLE')
+    formData.append('businessId', businessInfo.businessId)
+    formData.append('businessField', 'cover')
+
+    return service.post('/file/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
+}

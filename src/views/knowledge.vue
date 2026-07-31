@@ -2,7 +2,7 @@
     <div>
         <PageHead title="知识文章">
             <template #buttons>
-                <el-button type="primary">新增</el-button>
+                <el-button type="primary" @click="handleAdd">新增</el-button>
             </template>
         </PageHead>
         <TableSearch :formItem="formItem" @search="handleSearch" />
@@ -57,6 +57,10 @@
                 @current-change="handlePageChange"
             ></el-pagination>
         </div>
+        <ArticleDialog
+            v-model:modelValue="dialogVisible"
+            :categories="categoryList"
+        ></ArticleDialog>
     </div>
 </template>
 <script setup>
@@ -64,12 +68,14 @@ import PageHead from '@/components/PageHead.vue'
 import TableSearch from '@/components/TableSearch.vue'
 import { categoryTree, getCategoryList } from '@/api/admin'
 import { onMounted, ref } from 'vue'
+import ArticleDialog from '@/components/ArticleDialog.vue'
 
 const categoryMap = ref({})
 const categoryList = ref([])
 
 // 持久保存搜索条件
 const searchForm = ref({})
+const dialogVisible = ref(false)
 
 const formItem = [
     {
@@ -152,5 +158,10 @@ const handleSizeChange = () => {
     fetchList()
     // 自动关闭下拉弹窗
     setTimeout(() => document.body.click(), 60)
+}
+
+const handleAdd = () => {
+    dialogVisible.value = true
+    console.log('点击', dialogVisible.value)
 }
 </script>
