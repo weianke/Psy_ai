@@ -41,7 +41,9 @@
                         <el-button text v-if="scope.row.status === 1" type="warning"
                             >下线</el-button
                         >
-                        <el-button text type="danger">删除</el-button>
+                        <el-button text type="danger" @click="handleDel(scope.row.id)"
+                            >删除</el-button
+                        >
                     </div>
                 </template>
             </el-table-column>
@@ -70,7 +72,7 @@
 <script setup>
 import PageHead from '@/components/PageHead.vue'
 import TableSearch from '@/components/TableSearch.vue'
-import { categoryTree, getCategoryList, getArticleDetail } from '@/api/admin'
+import { categoryTree, getCategoryList, getArticleDetail, deleteArticle } from '@/api/admin'
 import { onMounted, ref } from 'vue'
 import ArticleDialog from '@/components/ArticleDialog.vue'
 
@@ -184,6 +186,40 @@ const handleEdit = async row => {
         dialogVisible.value = true
     } catch (err) {
         console.error('获取文章详情失败：', err)
+    }
+}
+
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const handleDel = async id => {
+    if (!id) return
+
+    try {
+        // 显示确认弹窗
+        await ElMessageBox.confirm('确定要删除该文章吗？删除后将无法恢复。', '删除确认', {
+            confirmButtonText: '确定删除',
+            cancelButtonText: '取消',
+            type: 'warning',
+            // 可以自定义样式
+            confirmButtonClass: 'el-button--danger',
+        })
+
+        // 用户点击确定后执行删除
+        await deleteArticle(id)
+        ElMessage.success('文章删除成功')
+
+        // 刷新列表
+        fetchList()
+    } catch (err) {
+        // 区分是用户取消还是删除失败
+        if (err === 'cancel' || err === 'close') {
+            // 用户取消操作，不做任何处理
+            console.log('用户取消删除')
+        } else {
+            // 删除失败
+            console.error('删除文章失败：', err)
+            ElMessage.error('删除失败，请重试')
+        }
     }
 }
 </script>

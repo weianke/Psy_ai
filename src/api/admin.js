@@ -47,3 +47,8 @@ export const getArticleDetail = id => {
 export const updateArticle = (id, data) => {
     return service.put(`/knowledge/article/${id}`, data)
 }
+
+// 删除文字
+export const deleteArticle = id => {
+    return service.delete(`/knowledge/article/${id}`)
+}
