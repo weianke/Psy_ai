@@ -60,6 +60,7 @@
         <ArticleDialog
             v-model:modelValue="dialogVisible"
             :categories="categoryList"
+            @success="handleSuccessReload"
         ></ArticleDialog>
     </div>
 </template>
@@ -163,5 +164,9 @@ const handleSizeChange = () => {
 const handleAdd = () => {
     dialogVisible.value = true
     console.log('点击', dialogVisible.value)
+}
+
+const handleSuccessReload = () => {
+    fetchList()
 }
 </script>

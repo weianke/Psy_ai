@@ -32,3 +32,8 @@ export const uploadFile = (file, businessInfo) => {
         },
     })
 }
+
+// 新增文章
+export const addArticle = data => {
+    return service.post('/knowledge/article', data)
+}

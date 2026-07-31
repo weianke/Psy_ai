@@ -17,7 +17,7 @@
                     <el-avatar
                         src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
                     ></el-avatar>
-                    <p class="font-bold">admin</p>
+                    <p class="font-bold">{{ userInfo.username }}</p>
                     <el-icon><ArrowDown></ArrowDown></el-icon>
                 </div>
                 <template #dropdown>
@@ -40,12 +40,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { logout } from '@/api/admin'
+
 const route = useRoute()
 const router = useRouter()
 
 const pageTitle = computed(() => route.meta?.title || '导航栏')
 const adminStore = useAdminStore()
-const { isCollapse, token } = storeToRefs(adminStore)
+const { isCollapse, token, userInfo } = storeToRefs(adminStore)
 
 const handleCollapse = () => {
     adminStore.toggleCollapse()
