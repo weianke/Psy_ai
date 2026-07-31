@@ -36,9 +36,14 @@
                             text
                             v-if="scope.row.status === 0 || scope.row.status === 2"
                             type="success"
+                            @click="handlePublishAction(scope.row, 1)"
                             >发布</el-button
                         >
-                        <el-button text v-if="scope.row.status === 1" type="warning"
+                        <el-button
+                            text
+                            v-if="scope.row.status === 1"
+                            type="warning"
+                            @click="handlePublishAction(scope.row, 2)"
                             >下线</el-button
                         >
                         <el-button text type="danger" @click="handleDel(scope.row.id)"
@@ -72,7 +77,13 @@
 <script setup>
 import PageHead from '@/components/PageHead.vue'
 import TableSearch from '@/components/TableSearch.vue'
-import { categoryTree, getCategoryList, getArticleDetail, deleteArticle } from '@/api/admin'
+import {
+    categoryTree,
+    getCategoryList,
+    getArticleDetail,
+    deleteArticle,
+    updateArticleStatus,
+} from '@/api/admin'
 import { onMounted, ref } from 'vue'
 import ArticleDialog from '@/components/ArticleDialog.vue'
 
@@ -221,5 +232,31 @@ const handleDel = async id => {
             ElMessage.error('删除失败，请重试')
         }
     }
+}
+
+const handlePublishAction = (row, type) => {
+    const isPublish = type === 1 ? '发布' : '下线'
+
+    ElMessageBox.confirm(`确定要${isPublish}文章${row.title}吗？`, `${isPublish}确认`, {
+        confirmButtonText: '确定发布',
+        cancelButtonText: '取消',
+        type: type === 1 ? 'success' : 'warning',
+    })
+        .then(() => {
+            // 这里可以调用接口进行实际的发布操作
+            updateArticleStatus(row.id, type)
+                .then(() => {
+                    ElMessage.success(`文章${isPublish}成功`)
+                    fetchList()
+                })
+                .catch(err => {
+                    console.error(`文章${isPublish}失败：`, err)
+                    ElMessage.error(`文章${isPublish}失败，请重试`)
+                })
+        })
+        .catch(() => {
+            // 用户取消操作，不做任何处理
+            console.log('用户取消发布')
+        })
 }
 </script>

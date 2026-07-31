@@ -48,6 +48,11 @@ export const updateArticle = (id, data) => {
     return service.put(`/knowledge/article/${id}`, data)
 }
 
+// 更新文章状态 status: 1 发布  2 下线
+export const updateArticleStatus = (id, status) => {
+    return service.put(`/knowledge/article/${id}/status`, { status })
+}
+
 // 删除文字
 export const deleteArticle = id => {
     return service.delete(`/knowledge/article/${id}`)
