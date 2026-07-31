@@ -1,5 +1,11 @@
 <template>
-    <el-dialog title="文章详情" v-model="visible" width="50%" @close="handleClose" v-bind="$attrs">
+    <el-dialog
+        :title="isEdit ? '编辑文章' : '新增文章'"
+        v-model="visible"
+        width="50%"
+        @close="handleClose"
+        v-bind="$attrs"
+    >
         <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px">
             <el-form-item label="文章标题" prop="title">
                 <el-input
@@ -72,7 +78,7 @@
                         />
                     </el-upload>
                     <div class="cover-remove" v-if="imgUrl">
-                        <el-button type="danger" size="mini" @click="removeImage"
+                        <el-button type="danger" size="small" @click="removeImage"
                             >移除封面</el-button
                         >
                     </div>
@@ -95,24 +101,25 @@
             <div v-html="formData.content"></div>
         </div>
         <template #footer>
-            <el-button type="primary" @click="btnPreview = !btnPreview">{{
-                btnPreview ? '隐藏预览' : '预览效果'
-            }}</el-button>
-            <el-button @click="handleClose"> 取消 </el-button>
+            <el-button type="primary" @click="btnPreview = !btnPreview">
+                {{ btnPreview ? '隐藏预览' : '预览效果' }}
+            </el-button>
+            <el-button @click="handleClose">取消</el-button>
             <el-button type="primary" @click="handleSubmit" :loading="loading">
-                创建文章
+                {{ isEdit ? '更新文章' : '创建文章' }}
             </el-button>
         </template>
     </el-dialog>
 </template>
+
 <script setup>
 import { computed, reactive, ref, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { uploadFile, addArticle } from '@/api/admin'
+import { uploadFile, addArticle, updateArticle } from '@/api/admin'
 import { fileBaseUrl } from '@/config'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 
-// 关键：关闭Vue自动属性继承，消除警告
+// 关闭Vue自动属性继承，消除警告
 defineOptions({
     inheritAttrs: false,
 })
@@ -143,12 +150,20 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    article: {
+        type: Object,
+        default: null,
+    },
 })
 
 const emit = defineEmits(['update:modelValue', 'success'])
 
 const formRef = ref(null)
 const editorRef = ref(null)
+const editorInstance = ref(null)
+
+// 判断是否为编辑模式
+const isEdit = computed(() => !!props.article?.id)
 
 // 初始化表单数据的函数
 const initFormData = () => ({
@@ -212,6 +227,12 @@ const visible = computed({
 const resetForm = () => {
     formData.value = initFormData()
     imgUrl.value = ''
+    businessId.value = null
+
+    // 重置富文本编辑器
+    if (editorInstance.value) {
+        editorInstance.value.setHtml('')
+    }
 
     // 重置表单验证
     nextTick(() => {
@@ -221,13 +242,59 @@ const resetForm = () => {
     })
 }
 
+// 填充编辑数据
+const fillFormData = article => {
+    if (!article) return
+
+    formData.value = {
+        id: article.id || '',
+        title: article.title || '',
+        content: article.content || '',
+        coverImage: article.coverImage || '',
+        categoryId: article.categoryId || 1,
+        summary: article.summary || '',
+        tags: article.tags || '',
+        tagArray: article.tags ? article.tags.split(',') : [],
+    }
+
+    imgUrl.value = article.coverImage ? `${fileBaseUrl}${article.coverImage}` : ''
+    businessId.value = article.id || null
+
+    // 设置富文本内容
+    nextTick(() => {
+        if (editorInstance.value && article.content) {
+            editorInstance.value.setHtml(article.content)
+        }
+    })
+}
+
 // 监听弹窗打开/关闭
 watch(visible, newVal => {
-    if (!newVal) {
-        // 弹窗关闭时重置
+    if (newVal) {
+        // 弹窗打开时
+        if (isEdit.value && props.article) {
+            // 编辑模式：填充数据
+            fillFormData(props.article)
+        } else {
+            // 新增模式：重置表单
+            resetForm()
+        }
+    } else {
+        // 弹窗关闭时重置（确保下次打开是干净的）
         resetForm()
     }
 })
+
+// 监听 article 变化（处理先传 article 后打开弹窗的情况）
+watch(
+    () => props.article,
+    newArticle => {
+        if (visible.value && newArticle) {
+            fillFormData(newArticle)
+        }
+    },
+    { deep: true }
+)
 
 const handleClose = () => {
     // 关闭弹窗
@@ -236,6 +303,8 @@ const handleClose = () => {
 
 // 上传校验
 const imgUrl = ref('')
+const businessId = ref(null)
+
 const beforeUpload = file => {
     // 校验上传文件
     const isImage = file.type.startsWith('image/')
@@ -255,15 +324,16 @@ const beforeUpload = file => {
 // 上传
 const handleRequest = async ({ file }) => {
     try {
-        const businessId = crypto.randomUUID()
+        const uploadBusinessId = crypto.randomUUID()
         const fileRes = await uploadFile(file, {
-            businessId: businessId,
+            businessId: uploadBusinessId,
         })
         console.log('fileRes', fileRes)
 
         if (fileRes?.filePath) {
             imgUrl.value = `${fileBaseUrl}${fileRes.filePath}`
             formData.value.coverImage = fileRes.filePath
+            businessId.value = uploadBusinessId
             ElMessage.success('图片上传成功')
         } else {
             ElMessage.error('上传失败，请重试')
@@ -286,7 +356,6 @@ const handleContentChange = data => {
     formData.value.content = data.html || ''
 }
 
-const editorInstance = ref(null)
 const handleEditorCreated = editor => {
     editorInstance.value = editor
     console.log('富文本编辑器已创建')
@@ -302,33 +371,50 @@ const btnPreview = ref(false)
 const loading = ref(false)
 
 const handleSubmit = async () => {
-    formRef.value.validate(async valid => {
-        if (valid) {
-            try {
-                loading.value = true
-                // 处理标签数组为字符串
-                const submitData = {
-                    ...formData.value,
-                    tags: formData.value.tagArray.join(','),
-                }
-                delete submitData.tagArray // 删除临时属性
-                console.log('提交数据：', submitData)
-                // 提交表单数据
-                const res = await addArticle(submitData)
-                console.log('提交结果：', res)
-                ElMessage.success('文章创建成功')
-                // ✅ 触发成功事件
-                emit('success')
-                handleClose()
-            } catch (err) {
-                console.error('提交异常：', err)
-                ElMessage.error('文章创建失败，请重试')
-            } finally {
-                loading.value = false
-            }
-        } else {
-            console.log('表单验证失败')
+    if (!formRef.value) return
+
+    try {
+        await formRef.value.validate()
+    } catch (error) {
+        console.log('表单验证失败')
+        return
+    }
+
+    try {
+        loading.value = true
+
+        // 处理标签数组为字符串
+        const submitData = {
+            title: formData.value.title,
+            content: formData.value.content,
+            coverImage: formData.value.coverImage,
+            categoryId: formData.value.categoryId,
+            summary: formData.value.summary,
+            tags: formData.value.tagArray.join(','),
         }
-    })
+
+        console.log('提交数据：', submitData)
+
+        // 根据模式调用不同接口
+        if (isEdit.value) {
+            // 编辑模式：调用更新接口
+            submitData.id = props.article.id
+            await updateArticle(props.article.id, submitData)
+            ElMessage.success('文章更新成功')
+        } else {
+            // 新增模式：调用创建接口
+            await addArticle(submitData)
+            ElMessage.success('文章创建成功')
+        }
+
+        // 触发成功事件，通知父组件刷新列表
+        emit('success')
+        handleClose()
+    } catch (err) {
+        console.error('操作失败：', err)
+        ElMessage.error(isEdit.value ? '文章更新失败' : '文章创建失败')
+    } finally {
+        loading.value = false
+    }
 }
 </script>

@@ -37,3 +37,13 @@ export const uploadFile = (file, businessInfo) => {
 export const addArticle = data => {
     return service.post('/knowledge/article', data)
 }
+
+// 获取文章详情
+export const getArticleDetail = id => {
+    return service.get(`/knowledge/article/${id}`)
+}
+
+// 更新文章
+export const updateArticle = (id, data) => {
+    return service.put(`/knowledge/article/${id}`, data)
+}

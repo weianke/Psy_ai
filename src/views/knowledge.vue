@@ -25,11 +25,13 @@
             </el-table-column>
             <el-table-column prop="authorName" width="150" label="作者"></el-table-column>
             <el-table-column prop="readCount" width="150" label="阅读量"></el-table-column>
-            <el-table-column prop="publishedAt" width="200" label="发布时间"></el-table-column>
+            <el-table-column prop="createdAt" width="200" label="发布时间"></el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
                 <template #default="scope">
                     <div class="flex items-center space-x-1">
-                        <el-button text type="primary">编辑</el-button>
+                        <el-button text type="primary" @click="handleEdit(scope.row)"
+                            >编辑</el-button
+                        >
                         <el-button
                             text
                             v-if="scope.row.status === 0 || scope.row.status === 2"
@@ -60,6 +62,7 @@
         <ArticleDialog
             v-model:modelValue="dialogVisible"
             :categories="categoryList"
+            :article="currentRow"
             @success="handleSuccessReload"
         ></ArticleDialog>
     </div>
@@ -67,7 +70,7 @@
 <script setup>
 import PageHead from '@/components/PageHead.vue'
 import TableSearch from '@/components/TableSearch.vue'
-import { categoryTree, getCategoryList } from '@/api/admin'
+import { categoryTree, getCategoryList, getArticleDetail } from '@/api/admin'
 import { onMounted, ref } from 'vue'
 import ArticleDialog from '@/components/ArticleDialog.vue'
 
@@ -162,11 +165,25 @@ const handleSizeChange = () => {
 }
 
 const handleAdd = () => {
+    currentRow.value = null
     dialogVisible.value = true
     console.log('点击', dialogVisible.value)
 }
 
 const handleSuccessReload = () => {
     fetchList()
+}
+const currentRow = ref(null)
+const handleEdit = async row => {
+    if (!row.id) return
+    try {
+        const data = await getArticleDetail(row.id)
+        console.log('编辑数据：', data)
+        // 触发编辑弹窗
+        currentRow.value = data
+        dialogVisible.value = true
+    } catch (err) {
+        console.error('获取文章详情失败：', err)
+    }
 }
 </script>
