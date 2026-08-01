@@ -87,6 +87,9 @@
                     </div>
                 </div>
             </div>
+            <template #footer>
+                <el-button @click="showDetailDialog = false">关闭</el-button>
+            </template>
         </el-dialog>
     </div>
 </template>
