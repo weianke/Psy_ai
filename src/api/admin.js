@@ -57,3 +57,13 @@ export const updateArticleStatus = (id, status) => {
 export const deleteArticle = id => {
     return service.delete(`/knowledge/article/${id}`)
 }
+
+// 咨询记录列表
+export const getConsultationList = params => {
+    return service.get('/psychological-chat/sessions', { params })
+}
+
+// 获取会话记录
+export const getConsultationDetail = sessionId => {
+    return service.get(`/psychological-chat/sessions/${sessionId}/messages`)
+}
