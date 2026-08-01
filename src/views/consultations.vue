@@ -50,17 +50,17 @@
                 <div class="detail-header">
                     <div class="detail-row">
                         <div class="detail-label">用户：</div>
-                        <div class="detail-value">{{ sessionDetail.userNickname }}</div>
+                        <div class="detail-value">{{ sessionDetail?.userNickname }}</div>
                     </div>
 
                     <div class="detail-row">
                         <div class="detail-label">开始时间：</div>
-                        <div class="detail-value">{{ sessionDetail.startedAt }}</div>
+                        <div class="detail-value">{{ sessionDetail?.startedAt }}</div>
                     </div>
 
                     <div class="detail-row">
                         <div class="detail-label">消息数：</div>
-                        <div class="detail-value">{{ sessionDetail.messageCount }}条</div>
+                        <div class="detail-value">{{ sessionDetail?.messageCount }}条</div>
                     </div>
                 </div>
             </div>
@@ -136,13 +136,14 @@ const handleSizeChange = () => {
 const sessionDetail = ref(null)
 const sessionMessages = ref([])
 const handleDetail = async row => {
+    sessionDetail.value = row
     loadingMessage.value = true
+    showDetailDialog.value = true
+
     try {
         const data = await getConsultationDetail(row.id)
         loadingMessage.value = false
         sessionMessages.value = data
-        sessionDetail.value = row
-        showDetailDialog.value = true
     } catch (error) {
         console.error('获取咨询详情失败:', error)
     }
