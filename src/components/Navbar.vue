@@ -9,7 +9,7 @@
                     <Fold v-else />
                 </el-icon>
             </el-button>
-            <p>{{ pageTitle }}</p>
+            <h2 class="text-[20px] text-[#1f2937] font-bold">{{ pageTitle }}</h2>
         </div>
         <div class="flex items-center">
             <el-dropdown @command="handleCommand">
