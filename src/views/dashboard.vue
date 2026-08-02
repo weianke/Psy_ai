@@ -1,74 +1,58 @@
 <template>
     <div class="dashboard-container">
         <el-row :gutter="20">
-            <el-col :span="6">
-                <el-card>
+            <el-col :span="6" v-for="(item, index) in statsData" :key="index">
+                <el-card shadow="hover" class="stats-card">
                     <div class="card-content">
-                        <div class="avatar users">
-                            <el-image style="width: 40px; height: 40px" :src="iconUrl1" />
+                        <div class="avatar" :class="item.iconClass">
+                            <el-image style="width: 40px; height: 40px" :src="item.icon" />
                         </div>
                         <div class="info">
-                            <p class="title">总用户数</p>
-                            <p class="value">{{ aiData.systemOverview?.totalUsers }}</p>
-                            <p class="subtitle-title">
-                                活跃用户数：{{ aiData.systemOverview?.activeUsers }}
-                            </p>
+                            <p class="title">{{ item.title }}</p>
+                            <!-- 平均情绪特殊处理：显示为 原始值/10 -->
+                            <div v-if="item.isAvgMood" class="value-wrapper">
+                                <span class="value">
+                                    <CountUp
+                                        :startVal="0"
+                                        :endVal="item.value"
+                                        :duration="2.5"
+                                        :options="countUpOptions"
+                                    >
+                                        <template #default="{ countUpRef }">
+                                            <span ref="countUpRef"></span>
+                                        </template>
+                                    </CountUp>
+                                    <span class="value-suffix">/10</span>
+                                </span>
+                            </div>
+                            <!-- 其他卡片正常显示数字 -->
+                            <div v-else class="value-wrapper">
+                                <span class="value">
+                                    <CountUp
+                                        :startVal="0"
+                                        :endVal="item.value"
+                                        :duration="2.5"
+                                        :options="countUpOptions"
+                                    >
+                                        <template #default="{ countUpRef }">
+                                            <span ref="countUpRef"></span>
+                                        </template>
+                                    </CountUp>
+                                </span>
+                            </div>
+                            <p class="subtitle-title">{{ item.subtitle }}</p>
                         </div>
                     </div>
                 </el-card>
-            </el-col>
-            <el-col :span="6">
-                <el-card>
-                    <div class="card-content">
-                        <div class="avatar like">
-                            <el-image style="width: 40px; height: 40px" :src="iconUrl2" />
-                        </div>
-                        <div class="info">
-                            <p class="title">情绪日志</p>
-                            <p class="value">{{ aiData.systemOverview?.totalDiaries }}</p>
-                            <p class="subtitle-title">
-                                今日新增：{{ aiData.systemOverview?.todayNewDiaries }}
-                            </p>
-                        </div>
-                    </div>
-                </el-card>
-            </el-col>
-            <el-col :span="6">
-                <el-card>
-                    <div class="card-content">
-                        <div class="avatar comments">
-                            <el-image style="width: 40px; height: 40px" :src="iconUrl3" />
-                        </div>
-                        <div class="info">
-                            <p class="title">咨询会话</p>
-                            <p class="value">{{ aiData.systemOverview?.totalSessions }}</p>
-                            <p class="subtitle-title">
-                                今日新增：{{ aiData.systemOverview?.todayNewSessions }}
-                            </p>
-                        </div>
-                    </div></el-card
-                >
-            </el-col>
-            <el-col :span="6">
-                <el-card>
-                    <div class="card-content">
-                        <div class="avatar smile">
-                            <el-image style="width: 40px; height: 40px" :src="iconUrl4" />
-                        </div>
-                        <div class="info">
-                            <p class="title">平均情绪</p>
-                            <p class="value">{{ aiData.systemOverview?.avgMoodScore }}</p>
-                            <p class="subtitle-title">情绪健康指数</p>
-                        </div>
-                    </div></el-card
-                >
             </el-col>
         </el-row>
     </div>
 </template>
+
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getDataAnalysis } from '@/api/admin'
+import CountUp from 'vue-countup-v3'
 
 // 统计图片引入
 const iconUrl1 = new URL('@/assets/images/users.png', import.meta.url).href
@@ -76,34 +60,106 @@ const iconUrl2 = new URL('@/assets/images/like.png', import.meta.url).href
 const iconUrl3 = new URL('@/assets/images/comments.png', import.meta.url).href
 const iconUrl4 = new URL('@/assets/images/smile.png', import.meta.url).href
 
-onMounted(() => {
-    handleSearch()
+// 数据状态
+const aiData = ref({})
+const isLoading = ref(false)
+
+// CountUp 配置
+const countUpOptions = {
+    useEasing: true,
+    useGrouping: true,
+    separator: ',',
+    decimal: '.',
+    enableScrollOnce: true,
+    scrollSpyOnce: true,
+}
+
+// 统计数据计算属性
+const statsData = computed(() => {
+    const overview = aiData.value.systemOverview || {}
+
+    return [
+        {
+            icon: iconUrl1,
+            iconClass: 'users',
+            title: '总用户数',
+            value: overview.totalUsers || 0,
+            subtitle: `活跃用户数：${overview.activeUsers || 0}`,
+            isAvgMood: false,
+        },
+        {
+            icon: iconUrl2,
+            iconClass: 'like',
+            title: '情绪日志',
+            value: overview.totalDiaries || 0,
+            subtitle: `今日新增：${overview.todayNewDiaries || 0}`,
+            isAvgMood: false,
+        },
+        {
+            icon: iconUrl3,
+            iconClass: 'comments',
+            title: '咨询会话',
+            value: overview.totalSessions || 0,
+            subtitle: `今日新增：${overview.todayNewSessions || 0}`,
+            isAvgMood: false,
+        },
+        {
+            icon: iconUrl4,
+            iconClass: 'smile',
+            title: '平均情绪',
+            isAvgMood: true, // 标记为平均情绪
+            value: overview.avgMoodScore || 0, // 原始值，如 75
+            subtitle: '情绪健康指数',
+        },
+    ]
 })
 
-const aiData = ref({})
+// 获取数据
 const handleSearch = async () => {
+    isLoading.value = true
     try {
         const response = await getDataAnalysis()
         console.log('数据分析结果:', response)
         aiData.value = response
     } catch (error) {
         console.error('获取数据分析失败:', error)
+    } finally {
+        isLoading.value = false
     }
 }
+
+// 生命周期
+onMounted(() => {
+    handleSearch()
+})
 </script>
+
 <style scoped lang="scss">
 .dashboard-container {
+    .stats-card {
+        transition: all 0.3s ease;
+
+        &:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+    }
+
     .card-content {
         display: flex;
         align-items: center;
+        padding: 4px 0;
+
         .avatar {
-            margin-right: 12px;
+            margin-right: 16px;
             width: 60px;
             height: 60px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
+
             &.users {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             }
@@ -117,53 +173,42 @@ const handleSearch = async () => {
                 background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
             }
         }
+
         .info {
+            flex: 1;
+            min-width: 0;
+
             .title {
                 font-size: 14px;
                 color: #7f8c8d;
-                margin-bottom: 4px;
+                margin: 0 0 4px 0;
+                font-weight: 500;
             }
+
+            .value-wrapper {
+                display: block;
+                margin: 0 0 4px 0;
+            }
+
             .value {
                 font-size: 24px;
                 font-weight: 700;
                 color: #2c3e50;
-                margin-bottom: 4px;
+                display: inline-flex;
+                align-items: baseline;
+
+                .value-suffix {
+                    font-size: 16px;
+                    font-weight: 400;
+                    color: #95a5a6;
+                    margin-left: 2px;
+                }
             }
+
             .subtitle-title {
                 font-size: 12px;
                 color: #95a5a6;
-            }
-        }
-    }
-    .chart-content {
-        padding: 20px;
-        height: 300px;
-        position: relative;
-
-        canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-
-        .consultation-stats {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-
-            .stat-item {
-                text-align: center;
-
-                .stat-label {
-                    font-size: 12px;
-                    color: #7f8c8d;
-                    margin-bottom: 4px;
-                }
-
-                .stat-value {
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #2c3e50;
-                }
+                margin: 0;
             }
         }
     }

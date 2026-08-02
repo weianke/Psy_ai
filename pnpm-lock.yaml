@@ -38,6 +38,9 @@ importers:
       vue:
         specifier: ^3.5.39
         version: 3.5.40
+      vue-countup-v3:
+        specifier: ^1.4.2
+        version: 1.4.2(vue@3.5.40)
       vue-router:
         specifier: ^5.2.0
         version: 5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.2.1)(vue@3.5.40))(rolldown@1.1.5)(vite@8.1.5(jiti@1.21.7)(sass@1.102.0)(yaml@2.9.0))(vue@3.5.40)
@@ -649,6 +652,9 @@ packages:
 
   confbox@0.2.4:
     resolution: {integrity: sha512-ysOGlgTFbN2/Y6Cg3Iye8YKulHw+R2fNXHrgSmXISQdMnomY6eNDprVdW9R5xBguEqI954+S6709UyiO7B+6OQ==}
+
+  countup.js@2.10.1:
+    resolution: {integrity: sha512-UHW/BsPDgVZfN919D4iu2HPv+jJxZUuaR3EhT0ScFZaD446GiQtkMTgOnOyJXdA2AewdlyUk9UvERlTHTbVpcw==}
 
   cssesc@3.0.0:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
@@ -1417,6 +1423,11 @@ packages:
   vue-component-type-helpers@3.3.8:
     resolution: {integrity: sha512-troqCMmQodQDqUqn63NQaFi+CDSclSe7sc8VEBFqf5GFLqmGR2Ph3P2WEC7qwpRVyEWsTi/aAr4vyOe/B1hU3g==}
 
+  vue-countup-v3@1.4.2:
+    resolution: {integrity: sha512-nRC65jBcdgwybxqztgd/WaK8ZN5T9ECPyiCFGYFMewCsvqdRVo1CtpT7JREcPNF837Fgu/izTSFiuzrIGD6w0A==}
+    peerDependencies:
+      vue: ^3.0.0
+
   vue-router@5.2.0:
     resolution: {integrity: sha512-QAC5i0LEb1GLG0LXDQmHu8L7FX12j0KwU/JTKmLQUJMrn04gQdKP6Du+p0QwpHb3iy71vBlqnHQ8WAfOSAWhqw==}
     peerDependencies:
@@ -2041,6 +2052,8 @@ snapshots:
   confbox@0.1.8: {}
 
   confbox@0.2.4: {}
+
+  countup.js@2.10.1: {}
 
   cssesc@3.0.0: {}
 
@@ -2698,6 +2711,11 @@ snapshots:
       yaml: 2.9.0
 
   vue-component-type-helpers@3.3.8: {}
+
+  vue-countup-v3@1.4.2(vue@3.5.40):
+    dependencies:
+      countup.js: 2.10.1
+      vue: 3.5.40
 
   vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.2.1)(vue@3.5.40))(rolldown@1.1.5)(vite@8.1.5(jiti@1.21.7)(sass@1.102.0)(yaml@2.9.0))(vue@3.5.40):
     dependencies:
