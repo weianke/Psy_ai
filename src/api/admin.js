@@ -67,3 +67,13 @@ export const getConsultationList = params => {
 export const getConsultationDetail = sessionId => {
     return service.get(`/psychological-chat/sessions/${sessionId}/messages`)
 }
+
+// 获取情绪日志列表
+export const getEmotionLogList = params => {
+    return service.get('/emotion-diary/admin/page', { params })
+}
+
+// 删除情绪日志
+export const deleteEmotionLog = id => {
+    return service.delete(`/emotion-diary/admin/${id}`)
+}
