@@ -24,10 +24,10 @@
                             <el-image style="width: 40px; height: 40px" :src="iconUrl2" />
                         </div>
                         <div class="info">
-                            <p class="title">总用户数</p>
-                            <p class="value">{{ aiData.systemOverview?.totalUsers }}</p>
+                            <p class="title">情绪日志</p>
+                            <p class="value">{{ aiData.systemOverview?.totalDiaries }}</p>
                             <p class="subtitle-title">
-                                活跃用户数：{{ aiData.systemOverview?.activeUsers }}
+                                今日新增：{{ aiData.systemOverview?.todayNewDiaries }}
                             </p>
                         </div>
                     </div>
@@ -40,10 +40,10 @@
                             <el-image style="width: 40px; height: 40px" :src="iconUrl3" />
                         </div>
                         <div class="info">
-                            <p class="title">总用户数</p>
-                            <p class="value">{{ aiData.systemOverview?.totalUsers }}</p>
+                            <p class="title">咨询会话</p>
+                            <p class="value">{{ aiData.systemOverview?.totalSessions }}</p>
                             <p class="subtitle-title">
-                                活跃用户数：{{ aiData.systemOverview?.activeUsers }}
+                                今日新增：{{ aiData.systemOverview?.todayNewSessions }}
                             </p>
                         </div>
                     </div></el-card
@@ -56,11 +56,9 @@
                             <el-image style="width: 40px; height: 40px" :src="iconUrl4" />
                         </div>
                         <div class="info">
-                            <p class="title">总用户数</p>
-                            <p class="value">{{ aiData.systemOverview?.totalUsers }}</p>
-                            <p class="subtitle-title">
-                                活跃用户数：{{ aiData.systemOverview?.activeUsers }}
-                            </p>
+                            <p class="title">平均情绪</p>
+                            <p class="value">{{ aiData.systemOverview?.avgMoodScore }}</p>
+                            <p class="subtitle-title">情绪健康指数</p>
                         </div>
                     </div></el-card
                 >
