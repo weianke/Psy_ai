@@ -17,7 +17,7 @@
                     <el-avatar
                         src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
                     ></el-avatar>
-                    <p class="font-bold">{{ userInfo.username }}</p>
+                    <p class="font-bold">{{ userInfo?.username }}</p>
                     <el-icon><ArrowDown></ArrowDown></el-icon>
                 </div>
                 <template #dropdown>
@@ -64,10 +64,11 @@ const handleCommand = command => {
                     // 第一步：调用后端退出接口
                     await logout(token.value)
                     ElMessage.success('已退出登录')
-                    await router.push('/auth/login')
-
-                    // 路由完成后清空
+                    // ==========【重点调整顺序】先清空，再跳转 ==========
                     adminStore.logout()
+
+                    // 使用replace，不要push；替换当前历史，无法回退到后台
+                    await router.replace('/auth/login')
                 } catch (err) {
                     // 接口报错也照样清除本地登录状态（防止卡死）
                     ElMessage.warning('服务端退出失败，将清除本地登录')
