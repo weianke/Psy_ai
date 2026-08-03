@@ -1,8 +1,7 @@
 import BackendLayout from '@/components/BackendLayout.vue'
-// ❗注意：下面这行导入没用，直接删掉！
-// import component from 'element-plus/es/components/tree-select/src/tree-select-option.mjs'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import AuthLayout from '@/components/AuthLayout.vue'
+import FrontendLayout from '@/components/FrontendLayout.vue'
 
 // 路由配置
 const backendRoutes = [
@@ -72,10 +71,49 @@ const backendRoutes = [
     },
 ]
 
+// 前端路由配置
+const frontendRoutes = [
+    {
+        path: '/',
+        component: FrontendLayout,
+        redirect: '/home',
+        children: [
+            {
+                path: 'home',
+                component: import('@/views/home.vue'),
+                meta: {
+                    title: '首页',
+                },
+            },
+            {
+                path: 'consultations',
+                component: import('@/views/frontConsultations.vue'),
+                meta: {
+                    title: 'AI咨询',
+                },
+            },
+            {
+                path: 'emotion-diary',
+                component: import('@/views/emotionDiary.vue'),
+                meta: {
+                    title: '情绪日志',
+                },
+            },
+            {
+                path: 'knowledge',
+                component: import('@/views/frontKnowledge.vue'),
+                meta: {
+                    title: '知识库',
+                },
+            },
+        ],
+    },
+]
+
 // 创建路由
 const router = createRouter({
     history: createWebHashHistory(),
-    routes: backendRoutes,
+    routes: [...backendRoutes, ...frontendRoutes],
 })
 
 // 路由前置守卫 ✅ 新版语法，移除next，修复跳转bug
