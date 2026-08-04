@@ -80,28 +80,28 @@ const frontendRoutes = [
         children: [
             {
                 path: 'home',
-                component: import('@/views/home.vue'),
+                component: () => import('@/views/home.vue'),
                 meta: {
                     title: '首页',
                 },
             },
             {
                 path: 'consultations',
-                component: import('@/views/frontConsultations.vue'),
+                component: () => import('@/views/frontConsultations.vue'),
                 meta: {
                     title: 'AI咨询',
                 },
             },
             {
                 path: 'emotion-diary',
-                component: import('@/views/emotionDiary.vue'),
+                component: () => import('@/views/emotionDiary.vue'),
                 meta: {
                     title: '情绪日志',
                 },
             },
             {
                 path: 'knowledge',
-                component: import('@/views/frontKnowledge.vue'),
+                component: () => import('@/views/frontKnowledge.vue'),
                 meta: {
                     title: '知识库',
                 },
@@ -153,7 +153,7 @@ router.beforeEach((to, from) => {
     if (isUser) {
         // 普通用户禁止访问后台
         if (to.path.startsWith('/back')) {
-            return '/auth/login'
+            return '/'
         }
         return true
     }

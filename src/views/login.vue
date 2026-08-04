@@ -92,6 +92,7 @@ const submitForm = async () => {
             router.push('/back/dashboard')
         } else {
             // 用户页面
+            router.push('/home')
         }
     } catch (err) {
         console.error(err)

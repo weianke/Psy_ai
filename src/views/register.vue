@@ -67,7 +67,7 @@ const formData = ref({
     phone: '',
     password: '',
     confirmPassword: '',
-    gender: 0,
+    gender: 1,
     userType: 1, // 前台用户1，后台用户2
 })
 
