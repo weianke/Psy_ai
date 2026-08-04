@@ -120,6 +120,7 @@ const router = createRouter({
 router.beforeEach((to, from) => {
     console.log('【路由守卫】to:', to.path, 'from:', from.path)
     const storageToken = localStorage.getItem('token')
+    console.log('【守卫读取localStorage token】', storageToken)
 
     let userInfo = null
     try {
@@ -130,39 +131,34 @@ router.beforeEach((to, from) => {
         localStorage.removeItem('userInfo')
     }
 
-    // 白名单：无需登录可以直接访问
-    const whiteList = ['/auth/login', '/auth/register']
-    if (whiteList.includes(to.path)) {
-        return true
-    }
-
-    // 不在白名单 并且没有登录凭证 → 跳转登录
+    // 无登录凭证
     if (!storageToken || !userInfo) {
-        return '/auth/login'
+        if (to.path.startsWith('/back')) {
+            return '/auth/login'
+        }
+        return true
     }
 
     const isAdmin = userInfo.userType === 2
     const isUser = userInfo.userType === 1
 
-    // 管理员
     if (isAdmin) {
-        // 已登录管理员禁止进入登录/注册页
-        if (whiteList.includes(to.path)) {
+        // 已登录管理员禁止停留在登录页
+        if (to.path.startsWith('/auth')) {
             return '/back/dashboard'
         }
         return true
     }
 
-    // 普通前台用户
     if (isUser) {
-        // 用户禁止访问后台
+        // 普通用户禁止访问后台
         if (to.path.startsWith('/back')) {
-            return '/'
+            return '/auth/login'
         }
         return true
     }
 
-    // 未知角色
+    // 未知角色强制登录
     return '/auth/login'
 })
 
