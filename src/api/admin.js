@@ -82,3 +82,8 @@ export const deleteEmotionLog = id => {
 export const getDataAnalysis = () => {
     return service.get('/data-analytics/overview')
 }
+
+// 用户端注册
+export const registerUser = data => {
+    return service.post('/user/add', data)
+}

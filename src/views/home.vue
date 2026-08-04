@@ -1,5 +1,5 @@
 <template>
-    <div class="home-container">
+    <div class="home-container select-none">
         <div class="content">
             <div class="text">
                 <h2 class="title">
