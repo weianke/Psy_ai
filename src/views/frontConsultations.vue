@@ -166,13 +166,17 @@
                         @keydown.enter.prevent="handleKeydownEnter"
                         class="message-input"
                     ></el-input>
+                    <div class="input-footer">
+                        <span>按Enter发送，Shift+Enter换行</span>
+                        <span>{{ userMessage.length }}/500</span>
+                    </div>
                 </div>
                 <!-- 发送按钮，AI回复中按钮禁用不可点击 -->
                 <el-button
                     class="send-btn"
                     type="primary"
                     @click="sendMessage"
-                    :disabled="isAiTying"
+                    :disabled="isAiTying || !userMessage.trim() || userMessage.length > 500"
                 >
                     <el-icon><Promotion /></el-icon>
                 </el-button>
