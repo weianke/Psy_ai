@@ -194,44 +194,77 @@ import { startSession, getSessionList, deleteSession, getSessionDetail } from '@
 import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { ChatRound, Clock, Delete, Plus, Promotion } from '@element-plus/icons-vue'
 
+// 机器人头像图片地址，使用vite的import.meta.url获取静态资源
 const imgUrl = new URL('@/assets/images/robot-fill.png', import.meta.url).href
+// 用户消息右侧头像
 const imgUrlRight = new URL('@/assets/images/like.png', import.meta.url).href
+// 备用头像资源
 const imgUrl3 = new URL('@/assets/images/users.png', import.meta.url).href
 
+// 组件挂载完成之后执行
 onMounted(() => {
+    // 请求后端获取会话侧边栏列表
     getSessionPage()
+    // 创建临时全新对话会话
     createNewFrontConsultation()
 })
 
 // ========== 响应式状态定义 ==========
+// 核心消息数组：全部聊天历史都存在这里，用户消息+AI消息
 const message = ref([])
+// 输入框双向绑定变量：保存用户输入框实时文本
 const userMessage = ref('')
-const isAiTying = ref(false) // 全局锁：只控制输入框/发送按钮禁用，不再控制UI时间显示
+// AI全局锁：true=AI正在流式输出；控制发送按钮/输入框禁用；不直接控制UI显示“正在输入”
+const isAiTying = ref(false)
+// 保存SSE中断控制器实例，用于切换会话、新建对话时终止正在进行的AI流
 let globalAbortCtrl = null
+// 标记流是否是正常收到done事件结束；区分是正常结束还是异常中断
 let isNormalEnd = false
 
+// 当前激活会话对象，保存sessionId、会话状态、会话标题
 const currentSession = ref(null)
+// 侧边栏会话列表数组，渲染历史对话列表
 const sessionList = ref([])
 
 // ========== 事件处理函数 ==========
+/**
+ * 输入框键盘监听事件
+ * Enter发送消息，Shift+Enter换行
+ * @param e 键盘事件对象
+ */
 const handleKeydownEnter = e => {
+    // 判断按下Enter并且没有按住Shift键
     if (e.key === 'Enter' && !e.shiftKey) {
+        // 阻止浏览器默认换行行为
         e.preventDefault()
+        // 调用发送消息主函数
         sendMessage()
     }
 }
 
+/**
+ * 【发送消息主入口函数】
+ * ✅【用户输入内容添加到对话数组的位置就在这个函数内部】
+ */
 const sendMessage = () => {
+    // 去除首尾空格，空文本直接返回，不发送
     if (!userMessage.value.trim()) return
+    // 判断AI还在输出中，禁止重复发送
     if (isAiTying.value) {
         ElMessage.warning('AI助手正在输入中，请稍后')
         return
     }
+    // 获取清理空格之后用户输入文本
     const userText = userMessage.value.trim()
+    // 清空输入框
     userMessage.value = ''
 
+    // ======================
+    // ✨【关键点：把用户输入push进message对话数组】
+    // senderType:1代表用户消息；senderType:2代表AI消息
+    // createdAt 直接存当前本地时间字符串，用于模板渲染消息时间
+    // ======================
     message.value.push({
         id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         senderType: 1,
@@ -239,53 +272,77 @@ const sendMessage = () => {
         createdAt: new Date().toLocaleString(),
     })
 
+    // 判断当前会话是临时会话TEMP：需要调用后端创建真实会话
     if (currentSession.value.status === 'TEMP') {
+        // 创建会话，把用户第一条消息传给后端
         startNewSession(userText)
     } else {
+        // 已有真实会话，直接开启SSE AI流式回复
         startAIResponse(currentSession.value.sessionId, userText)
     }
 }
 
+/**
+ * 创建新会话接口调用（TEMP临时会话转正式会话）
+ * @param userInput 用户第一条提问文本
+ */
 const startNewSession = async userInput => {
+    // 组装创建会话请求参数
     const sessionParams = {
         initialMessage: userInput,
     }
+    // 如果标题是默认“新对话”，自动生成带时间的标题；否则保留原有标题
     if (currentSession.value.sessionTitle === '新对话') {
         sessionParams.sessionTitle = `AI助手 = ${new Date().toLocaleString()}`
     } else {
         sessionParams.sessionTitle = currentSession.value.sessionTitle
     }
     try {
+        // 请求后端startSession接口创建会话
         const data = await startSession(sessionParams)
         console.log('data', data)
+        // 后端返回sessionId、status，组装会话对象
         const sessionData = {
             sessionId: data.sessionId,
             status: data.status,
             sessionTitle: sessionParams.sessionTitle,
         }
+        // 如果原来是临时会话，原地覆盖对象属性；否则直接赋值
         if (currentSession.value && currentSession.value.status === 'TEMP') {
             Object.assign(currentSession.value, sessionData)
         } else {
             currentSession.value = sessionData
         }
+        // 创建完会话刷新侧边栏会话列表
         getSessionPage()
 
+        // 创建完会话，立刻发起AI流式请求拿到回答
         startAIResponse(currentSession.value.sessionId, userInput)
     } catch (error) {
+        // 创建会话异常捕获
         console.error('创建会话失败:', error)
         ElMessage.error('创建会话失败')
     }
 }
 
+/**
+ * 开启SSE流式获取AI回复核心函数
+ * @param sessionId 当前会话id
+ * @param userMessage 用户提问文本
+ */
 const startAIResponse = (sessionId, userMessage) => {
+    // 二次校验锁，防止重复触发
     if (isAiTying.value) {
         ElMessage.warning('AI助手正在输入中，请稍后')
         return
     }
+    // 打开全局AI输出锁，禁用发送按钮
     isAiTying.value = true
+    // 重置流正常结束标记
     isNormalEnd = false
 
-    // ✅ 新增本条消息isStreaming:true，状态绑定到消息对象
+    // ✨【重点：预先push一条空内容AI消息到message数组】
+    // isStreaming: true 这条标记交给template模板：用来渲染“正在输入”UI、打字光标动画
     const aiMessage = {
         id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         senderType: 2,
@@ -295,102 +352,162 @@ const startAIResponse = (sessionId, userMessage) => {
     }
     message.value.push(aiMessage)
 
+    // 创建AbortController控制器，提供手动中断SSE请求能力
     const ctrl = new AbortController()
+    // 将控制器挂载全局变量，外部函数可以随时中断流
     globalAbortCtrl = ctrl
 
+    // 调用fetchEventSource建立SSE长连接
     fetchEventSource('/api/psychological-chat/stream', {
         method: 'POST',
+        // 请求头：指定json格式、token鉴权、接受SSE事件流
         headers: {
             'Content-Type': 'application/json',
             Token: localStorage.getItem('token') || '',
             Accept: 'text/event-stream',
         },
+        // 请求body，传给后端会话id与用户提问
         body: JSON.stringify({
             sessionId,
             userMessage,
         }),
+        // 绑定中断信号
         signal: ctrl.signal,
+        // SSE连接成功打开回调
         onopen: response => {
+            // 校验响应类型，非SSE流报错
             if (response.headers.get('content-type') !== 'text/event-stream') {
                 ElMessage.error('服务器返回非流式数据')
             }
         },
+        // 收到后端推送每一块消息片段触发，循环执行
         onmessage: event => {
+            // 获取原始data数据，去除前后空格
             const raw = event.data.trim()
+            // 空数据直接跳过
             if (!raw) return
+            // 获取SSE事件名称
             const eventName = event.event
+            // 拿到数组最后一条，也就是刚刚push进去那条AI空消息对象
             const aiMsgItem = message.value[message.value.length - 1]
 
+            // 后端推送 done事件：代表AI全部输出完成
             if (eventName === 'done') {
+                // 设置标记：流正常结束
                 isNormalEnd = true
+                // 关闭全局AI锁，恢复发送按钮
                 isAiTying.value = false
-                aiMsgItem.isStreaming = false // ✅流结束，关闭本条消息输入状态
+                // ✨关闭本条消息的流式状态，模板就不再渲染“正在输入”动画
+                aiMsgItem.isStreaming = false
+                // 手动中断SSE连接
                 ctrl.abort()
                 return
             }
 
+            // json解析后端返回的chunk片段数据
             const payload = JSON.parse(raw)
+            // 判断后端返回code=200代表业务成功
             const ok = String(payload.code) === '200'
             if (ok && payload.data && payload.data.content) {
+                // ✨流式核心逻辑：增量拼接文本，content不断追加片段，页面实时渲染打字效果
                 aiMsgItem.content += payload.data.content
             } else if (!ok) {
+                // 业务返回错误码，进入错误处理
                 handleError(payload.message || 'AI回复失败')
             }
         },
+        // SSE发生异常、网络断开触发
         onerror: error => {
+            // 如果是正常done结束触发的error，直接忽略
             if (isNormalEnd) {
                 isNormalEnd = false
                 return
             }
+            // 业务错误处理
             handleError(error || 'AI回复失败')
+            // fetch‑event‑source要求onerror必须抛出错误，防止自动重连
             throw error
         },
+        // SSE连接关闭回调
         onclose: () => {
+            // 清空全局中断控制器
             globalAbortCtrl = null
         },
     })
 }
 
+/**
+ * AI回复错误统一处理函数
+ * @param error 错误信息文本
+ */
 const handleError = error => {
+    // 获取最后一条AI消息对象
     const aiMessage = message.value[message.value.length - 1]
     if (aiMessage) {
+        // 把消息内容改为错误提示文本
         aiMessage.content = 'AI回复失败'
-        aiMessage.isStreaming = false // ✅出错也要关闭正在输入状态
+        // 出错必须关闭isStreaming，模板停止渲染正在输入UI
+        aiMessage.isStreaming = false
     }
+    // 释放全局锁，恢复发送按钮
     isAiTying.value = false
+    // elementplus弹出错误提示
     ElMessage.error(error || 'AI回复失败')
 }
 
+/**
+ * 创建全新咨询对话：新建临时会话TEMP
+ */
 const createNewFrontConsultation = () => {
+    // 如果当前有正在跑的SSE流，直接中断
     if (globalAbortCtrl) globalAbortCtrl.abort()
+    // 关闭AI输出锁
     isAiTying.value = false
+    // 组装临时会话对象，sessionId用时间戳随机生成，status标记TEMP临时
     const newSession = {
         sessionId: `temp_${Date.now()}`,
         status: 'TEMP',
         sessionTitle: '新对话',
     }
+    // 赋值为当前激活会话
     currentSession.value = newSession
+    // 清空整个消息数组，聊天窗口全部清空
     message.value = []
 }
 
+/**
+ * 获取会话列表接口，侧边栏渲染历史会话
+ */
 const getSessionPage = async () => {
     try {
+        // 请求后端分页拿会话列表，固定取第1页10条
         const data = await getSessionList({
             pageNum: 1,
             pageSize: 10,
         })
+        // 把返回的会话记录赋值响应式变量，侧边栏v-for渲染
         sessionList.value = data.records
     } catch (error) {
         console.error('获取会话列表失败:', error)
     }
 }
 
+/**
+ * 用户点击侧边栏历史会话，切换聊天
+ * @param session 点击选中会话对象
+ */
 const handleSessionClick = async session => {
+    // 如果当前AI还在输出，立刻中断SSE流
     if (globalAbortCtrl) globalAbortCtrl.abort()
+    // 释放AI锁
     isAiTying.value = false
     try {
+        // 根据会话id向后端请求会话完整历史消息记录
         const data = await getSessionDetail(session.id)
+        // ✨后端返回的历史对话直接赋值给message数组，页面渲染全部历史消息
+        // 后端返回每条消息自带 createdAt，模板直接渲染历史时间
         message.value = data
+        // 组装当前会话对象
         const sessionData = {
             sessionId: 'session_' + session.id,
             status: 'ACTIVE',
@@ -402,32 +519,51 @@ const handleSessionClick = async session => {
     }
 }
 
+/**
+ * 删除会话
+ * @param sessionId 需要删除会话id
+ */
 const handleDeleteSession = async sessionId => {
     try {
+        // 调用删除会话接口
         await deleteSession(sessionId)
         ElMessage.success('删除成功')
+        // 删除之后刷新会话列表
         getSessionPage()
     } catch (error) {
         console.error('删除会话失败', error)
     }
 }
 
+/**
+ * 简单内容替换工具，把换行符转html换行标签
+ * @param content 原始消息文本
+ * @returns 替换后字符串
+ */
 const formatMessageContent = content => {
+    // 空值或者非字符串返回空
     if (!content || typeof content !== 'string') return ''
+    // 将\n换行替换成<br>html换行
     return content.replace(/\n/g, '<br>')
 }
 
-// 消息容器DOM引用
+// 获取聊天消息容器DOM引用，用于滚动到底部
 const chatMessagesRef = ref(null)
 
-/** 滚动聊天面板到最底部 */
+/**
+ * 滚动聊天面板滚动条到最底部
+ * nextTick等待DOM更新完毕之后操作DOM滚动
+ */
 const scrollChatToBottom = async () => {
     await nextTick()
     if (chatMessagesRef.value) {
+        // 设置滚动高度等于内容总高度，实现滚动到底部
         chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
     }
 }
 
+// 深度监听message数组，只要数组内部对象/内容发生改变，执行滚动到底部
+// deep:true：数组内部对象属性变更（AI流式content不断追加、isStreaming变更）也会触发watch
 watch(
     message,
     () => {
