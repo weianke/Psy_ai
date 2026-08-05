@@ -95,6 +95,62 @@
                         <div class="message-time">刚刚</div>
                     </div>
                 </div>
+                <!-- 遍历消息数组，渲染用户和AI的消息 -->
+                <div
+                    class="message-item"
+                    v-for="msg in message"
+                    :key="msg.id"
+                    :class="msg.senderType === 1 ? 'user-message' : 'ai-message'"
+                >
+                    <div class="message-avatar">
+                        <el-image
+                            :src="imgUrl3"
+                            v-if="msg.senderType === 1"
+                            class="w-[18px] h-[18px]"
+                        ></el-image>
+                        <el-image
+                            :src="imgUrl"
+                            v-if="msg.senderType === 2"
+                            class="w-[18px] h-[18px]"
+                        ></el-image>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <!-- AI正在思考中 -->
+                            <div
+                                class="typing-indicator"
+                                v-if="msg.senderType === 2 && isAiTying && !msg.content"
+                            >
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+
+                            <!-- AI错误提示 -->
+                            <div v-else-if="msg.isError" class="error-indicator">
+                                <p>{{ msg.content }}</p>
+                            </div>
+
+                            <!-- AI正常返回消息 -->
+                            <MarkdownRenderer
+                                v-else-if="msg.senderType === 2 && !msg.isError"
+                                :content="msg.content"
+                                :is-ai-message="true"
+                            />
+
+                            <!-- 用户消息 -->
+                            <p
+                                v-else-if="msg.content"
+                                v-html="formatMessageContent(msg.content)"
+                            ></p>
+                        </div>
+                        <div class="message-time">
+                            {{
+                                msg.senderType === 2 && isAiTying ? '正在输入中...' : msg.createdAt
+                            }}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 底部输入区域：文本框 + 发送按钮 -->
@@ -127,12 +183,15 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { startSession, getSessionList } from '@/api/frontend'
+import { startSession, getSessionList, deleteSession, getSessionDetail } from '@/api/frontend'
 import { ElMessage } from 'element-plus'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 // 导入静态图片：vite处理assets内图片，转为浏览器可访问http地址
 const imgUrl = new URL('@/assets/images/robot-fill.png', import.meta.url).href
 const imgUrlRight = new URL('@/assets/images/like.png', import.meta.url).href
+
+const imgUrl3 = new URL('@/assets/images/users.png', import.meta.url).href
 
 // 组件挂载完成后执行：页面一打开自动执行新建会话，生成临时会话
 onMounted(() => {
@@ -296,10 +355,28 @@ const getSessionPage = async () => {
 }
 
 // 获取历史会话数据
-const handleSessionClick = session => {}
+const handleSessionClick = async session => {
+    try {
+        const data = await getSessionDetail(session.id)
+        message.value = data
+    } catch (error) {
+        console.error('获取历史会话详情失败:', error)
+    }
+}
 
 // 删除历史会话
-const handleDeleteSession = id => {}
+const handleDeleteSession = sessionId => {
+    try {
+        deleteSession(sessionId)
+        ElMessage.success('删除成功')
+        getSessionPage()
+    } catch (error) {}
+}
+
+const formatMessageContent = content => {
+    // 这里可以添加对用户消息的格式化逻辑，比如转义HTML、处理换行等
+    return content.replace(/\n/g, '<br>')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -310,6 +387,7 @@ const handleDeleteSession = id => {}
     display: flex;
     gap: 20px;
     padding: 20px;
+    min-height: calc(100vh - 121px);
     .sidebar {
         width: 320px;
         .ai-assistant-info {
