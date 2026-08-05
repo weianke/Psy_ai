@@ -190,6 +190,7 @@ import { onMounted, ref } from 'vue'
 import { startSession, getSessionList, deleteSession, getSessionDetail } from '@/api/frontend'
 import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { fetchEventSource } from '@microsoft/fetch-event-source'
 
 // 导入静态图片：vite处理assets内图片，转为浏览器可访问http地址
 const imgUrl = new URL('@/assets/images/robot-fill.png', import.meta.url).href
@@ -321,10 +322,92 @@ const startNewSession = async message => {
         }
         // 更新会话列表
         getSessionPage()
+        // 开始流式对话
+        startAIResponse(currentSession.value.sessionId, message)
     } catch (error) {
         // 请求异常，这里为空，建议加上错误提示
         console.error('创建会话失败:', error)
     }
+}
+
+const startAIResponse = (sessionId, userMessage) => {
+    if (isAiTying.value) {
+        ElMessage.warning('AI助手正在输入中，请稍后')
+        return
+    }
+    isAiTying.value = true
+
+    const aiMessage = {
+        id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        senderType: 2,
+        content: '',
+        createdAt: new Date().toLocaleString(),
+    }
+
+    message.value.push(aiMessage)
+
+    const ctrl = new AbortController()
+    // 需要调用流式接口
+    fetchEventSource('/api/psychological-chat/stream', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Token: localStorage.getItem('token') || '',
+            Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({
+            sessionId,
+            userMessage,
+        }),
+        signal: ctrl.signal,
+        onopen: response => {
+            console.log(response)
+            if (response.headers.get('content-type') !== 'text/event-stream') {
+                ElMessage.error('服务器返回非流式数据')
+            }
+        },
+        onmessage: event => {
+            const raw = event.data.trim()
+            if (!raw) return
+            const eventName = event.event
+            // 当前会话的AI消息
+            const aiMessage = message.value[message.value.length - 1]
+            if (eventName === 'done') {
+                isAiTying.value = false
+                ctrl.abort()
+                return
+            }
+            const payload = JSON.parse(raw)
+            const ok = String(payload.code) === '200'
+
+            if (ok && payload.data && payload.data.content) {
+                aiMessage.content += payload.data.content
+            } else if (!ok) {
+                // 错误处理
+                handleError(payload.message || 'AI回复失败')
+            }
+        },
+        onerror: error => {
+            // 错误处理
+            handleError(error || 'AI回复失败')
+            throw error
+        },
+        onclose: () => {
+            // 开始情绪分析
+        },
+    })
+}
+
+// 错误处理函数
+const handleError = error => {
+    const aiMessage = message.value[message.value.length - 1]
+
+    if (aiMessage) {
+        aiMessage.content = 'AI回复失败'
+    }
+
+    isAiTying.value = false
+    ElMessage.error(error || 'AI回复失败')
 }
 
 /**
@@ -363,6 +446,15 @@ const handleSessionClick = async session => {
     try {
         const data = await getSessionDetail(session.id)
         message.value = data
+
+        // 更新当前会话对象数据
+        const sessionData = {
+            sessionId: 'session_' + session.id,
+            status: 'ACTIVE',
+            sessionTitle: session.sessionTitle,
+        }
+
+        currentSession.value = sessionData
     } catch (error) {
         console.error('获取历史会话详情失败:', error)
     }
