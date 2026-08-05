@@ -80,7 +80,7 @@
             </div>
 
             <!-- 聊天消息列表区域 -->
-            <div class="chat-messages">
+            <div class="chat-messages" ref="chatMessagesRef">
                 <!-- 当消息数组为空，展示AI欢迎开场白 -->
                 <div class="message-item ai-message" v-if="message.length === 0">
                     <div class="message-avatar">
@@ -116,10 +116,10 @@
                     </div>
                     <div class="message-content">
                         <div class="message-bubble">
-                            <!-- AI正在思考中 -->
+                            <!-- AI正在思考中【修改：使用msg.isStreaming，不再用全局isAiTying】 -->
                             <div
                                 class="typing-indicator"
-                                v-if="msg.senderType === 2 && isAiTying && !msg.content"
+                                v-if="msg.senderType === 2 && msg.isStreaming && !msg.content"
                             >
                                 <div class="typing-dot"></div>
                                 <div class="typing-dot"></div>
@@ -144,9 +144,12 @@
                                 v-html="formatMessageContent(msg.content)"
                             ></p>
                         </div>
+                        <!-- 时间显示：本条消息自己的isStreaming状态，历史消息不受影响 -->
                         <div class="message-time">
                             {{
-                                msg.senderType === 2 && isAiTying ? '正在输入中...' : msg.createdAt
+                                msg.senderType === 2 && msg.isStreaming
+                                    ? '正在输入中...'
+                                    : msg.createdAt
                             }}
                         </div>
                     </div>
@@ -186,147 +189,91 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch, nextTick } from 'vue'
 import { startSession, getSessionList, deleteSession, getSessionDetail } from '@/api/frontend'
 import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { ChatRound, Clock, Delete, Plus, Promotion } from '@element-plus/icons-vue'
 
-// 导入静态图片：vite处理assets内图片，转为浏览器可访问http地址
 const imgUrl = new URL('@/assets/images/robot-fill.png', import.meta.url).href
 const imgUrlRight = new URL('@/assets/images/like.png', import.meta.url).href
-
 const imgUrl3 = new URL('@/assets/images/users.png', import.meta.url).href
 
-// 组件挂载完成后执行：页面一打开自动执行新建会话，生成临时会话
 onMounted(() => {
-    // 获取会话列表
     getSessionPage()
-    // 初始化创建一个新对话
     createNewFrontConsultation()
 })
 
 // ========== 响应式状态定义 ==========
-/**
- * message：聊天消息数组
- * 用来存放整条对话记录，每一项是 {role:'user'|'ai', content:'消息文本'}
- */
 const message = ref([])
-
-/**
- * userMessage：输入框双向绑定变量，用户正在输入的文字
- */
 const userMessage = ref('')
+const isAiTying = ref(false) // 全局锁：只控制输入框/发送按钮禁用，不再控制UI时间显示
+let globalAbortCtrl = null
+let isNormalEnd = false
 
-/**
- * isAiTying：AI正在回复标记
- * true=AI正在思考/输出，此时输入框、发送按钮禁用，防止重复发消息
- */
-const isAiTying = ref(false)
-
-/**
- * currentSession：当前会话对象 ref
- * 会话分为两种状态：
- * 1、TEMP临时会话：刚打开页面，还没有发送第一条消息，sessionId=temp_时间戳，没有和后端交互
- * 2、真实会话：用户发送第一条消息后，调用后端接口创建会话，拿到后端返回真实sessionId
- * {
- *    sessionId: 会话id，temp_xxx / 后端真实id
- *    status: 'TEMP' | ''
- *    sessionTitle: 会话标题
- * }
- */
 const currentSession = ref(null)
-const sessionList = ref([]) // 会话列表，暂时未渲染dom
+const sessionList = ref([])
 
 // ========== 事件处理函数 ==========
-/**
- * 输入框回车键盘事件
- * @desc enter发送消息，shift+enter允许换行
- * @param {KeyboardEvent} e 键盘事件对象
- */
 const handleKeydownEnter = e => {
-    // 判断按下Enter，并且没有按住shift键
     if (e.key === 'Enter' && !e.shiftKey) {
-        console.log('发送消息:', userMessage.value)
-        // prevent：阻止textarea回车默认换行行为
         e.preventDefault()
-        // ✨这里你只打印日志，**没有调用sendMessage()！这是一个BUG！回车不会真正发消息**
         sendMessage()
     }
 }
 
-/**
- * sendMessage 点击发送按钮执行的发送消息主逻辑
- */
 const sendMessage = () => {
-    // 去除首尾空格，如果输入是空文本直接return，不允许发送空白消息
     if (!userMessage.value.trim()) return
-
-    // 如果AI正在回复，弹窗警告，直接返回，禁止发送
     if (isAiTying.value) {
         ElMessage.warning('AI助手正在输入中，请稍后')
         return
     }
-
-    // 拿到修剪后的纯文本消息
-    const message = userMessage.value.trim()
-
-    // 清空输入框
+    const userText = userMessage.value.trim()
     userMessage.value = ''
 
-    // 判断：如果当前会话是【临时会话TEMP】，代表是本次对话第一条消息，需要请求后端创建真实会话
+    message.value.push({
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        senderType: 1,
+        content: userText,
+        createdAt: new Date().toLocaleString(),
+    })
+
     if (currentSession.value.status === 'TEMP') {
-        startNewSession(message)
+        startNewSession(userText)
+    } else {
+        startAIResponse(currentSession.value.sessionId, userText)
     }
-    // ⚠缺失逻辑：如果不是TEMP（历史旧会话），直接发送聊天消息给AI接口，你目前代码没有写这部分！
 }
 
-/**
- * startNewSession 创建会话接口
- * 场景：页面刚打开，用户发送第一条消息，把临时会话转为后端持久化真实会话
- * @param {string} message 用户第一条发送的消息文本
- */
-const startNewSession = async message => {
-    // 组装传给后端的会话参数
+const startNewSession = async userInput => {
     const sessionParams = {
-        initialMessage: message, // 用户第一条消息
+        initialMessage: userInput,
     }
-
-    // 如果标题是默认"新对话"，用时间作为会话标题；否则沿用旧会话标题
     if (currentSession.value.sessionTitle === '新对话') {
         sessionParams.sessionTitle = `AI助手 = ${new Date().toLocaleString()}`
     } else {
-        // 如果是历史对话记录
         sessionParams.sessionTitle = currentSession.value.sessionTitle
     }
-
     try {
-        // 调用api发起创建会话请求
         const data = await startSession(sessionParams)
         console.log('data', data)
-
-        // 后端返回的数据，组装成本地前端会话对象格式
         const sessionData = {
             sessionId: data.sessionId,
             status: data.status,
             sessionTitle: sessionParams.sessionTitle,
         }
-
-        // 判断：如果现在还是临时会话，原地修改currentSession，把临时会话更新成后端返回真实会话
-        // Object.assign：原地合并属性，不替换ref引用，保留原有对象，覆盖新增字段
         if (currentSession.value && currentSession.value.status === 'TEMP') {
             Object.assign(currentSession.value, sessionData)
         } else {
-            // 否则直接整体赋值，覆盖整个会话对象
             currentSession.value = sessionData
         }
-        // 更新会话列表
         getSessionPage()
-        // 开始流式对话
-        startAIResponse(currentSession.value.sessionId, message)
+
+        startAIResponse(currentSession.value.sessionId, userInput)
     } catch (error) {
-        // 请求异常，这里为空，建议加上错误提示
         console.error('创建会话失败:', error)
+        ElMessage.error('创建会话失败')
     }
 }
 
@@ -336,18 +283,21 @@ const startAIResponse = (sessionId, userMessage) => {
         return
     }
     isAiTying.value = true
+    isNormalEnd = false
 
+    // ✅ 新增本条消息isStreaming:true，状态绑定到消息对象
     const aiMessage = {
         id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         senderType: 2,
         content: '',
         createdAt: new Date().toLocaleString(),
+        isStreaming: true,
     }
-
     message.value.push(aiMessage)
 
     const ctrl = new AbortController()
-    // 需要调用流式接口
+    globalAbortCtrl = ctrl
+
     fetchEventSource('/api/psychological-chat/stream', {
         method: 'POST',
         headers: {
@@ -361,7 +311,6 @@ const startAIResponse = (sessionId, userMessage) => {
         }),
         signal: ctrl.signal,
         onopen: response => {
-            console.log(response)
             if (response.headers.get('content-type') !== 'text/event-stream') {
                 ElMessage.error('服务器返回非流式数据')
             }
@@ -370,65 +319,60 @@ const startAIResponse = (sessionId, userMessage) => {
             const raw = event.data.trim()
             if (!raw) return
             const eventName = event.event
-            // 当前会话的AI消息
-            const aiMessage = message.value[message.value.length - 1]
+            const aiMsgItem = message.value[message.value.length - 1]
+
             if (eventName === 'done') {
+                isNormalEnd = true
                 isAiTying.value = false
+                aiMsgItem.isStreaming = false // ✅流结束，关闭本条消息输入状态
                 ctrl.abort()
                 return
             }
+
             const payload = JSON.parse(raw)
             const ok = String(payload.code) === '200'
-
             if (ok && payload.data && payload.data.content) {
-                aiMessage.content += payload.data.content
+                aiMsgItem.content += payload.data.content
             } else if (!ok) {
-                // 错误处理
                 handleError(payload.message || 'AI回复失败')
             }
         },
         onerror: error => {
-            // 错误处理
+            if (isNormalEnd) {
+                isNormalEnd = false
+                return
+            }
             handleError(error || 'AI回复失败')
             throw error
         },
         onclose: () => {
-            // 开始情绪分析
+            globalAbortCtrl = null
         },
     })
 }
 
-// 错误处理函数
 const handleError = error => {
     const aiMessage = message.value[message.value.length - 1]
-
     if (aiMessage) {
         aiMessage.content = 'AI回复失败'
+        aiMessage.isStreaming = false // ✅出错也要关闭正在输入状态
     }
-
     isAiTying.value = false
     ElMessage.error(error || 'AI回复失败')
 }
 
-/**
- * createNewFrontConsultation 新建会话
- * 场景：页面onMounted初始化；点击右上角加号按钮
- * 作用：生成本地临时会话，不请求后端，用户发送第一条消息才真正创建后端会话
- */
 const createNewFrontConsultation = () => {
-    // temp_时间戳，前端临时会话id，还没存数据库
+    if (globalAbortCtrl) globalAbortCtrl.abort()
+    isAiTying.value = false
     const newSession = {
         sessionId: `temp_${Date.now()}`,
         status: 'TEMP',
         sessionTitle: '新对话',
     }
-    // 赋值给当前会话
     currentSession.value = newSession
-    // ⚠缺失：清空message消息数组，新建对话旧消息还会残留！
-    message.value = [] // 需要清空消息
+    message.value = []
 }
 
-// 获取会话列表，暂时未渲染dom
 const getSessionPage = async () => {
     try {
         const data = await getSessionList({
@@ -441,38 +385,56 @@ const getSessionPage = async () => {
     }
 }
 
-// 获取历史会话数据
 const handleSessionClick = async session => {
+    if (globalAbortCtrl) globalAbortCtrl.abort()
+    isAiTying.value = false
     try {
         const data = await getSessionDetail(session.id)
         message.value = data
-
-        // 更新当前会话对象数据
         const sessionData = {
             sessionId: 'session_' + session.id,
             status: 'ACTIVE',
             sessionTitle: session.sessionTitle,
         }
-
         currentSession.value = sessionData
     } catch (error) {
         console.error('获取历史会话详情失败:', error)
     }
 }
 
-// 删除历史会话
-const handleDeleteSession = sessionId => {
+const handleDeleteSession = async sessionId => {
     try {
-        deleteSession(sessionId)
+        await deleteSession(sessionId)
         ElMessage.success('删除成功')
         getSessionPage()
-    } catch (error) {}
+    } catch (error) {
+        console.error('删除会话失败', error)
+    }
 }
 
 const formatMessageContent = content => {
-    // 这里可以添加对用户消息的格式化逻辑，比如转义HTML、处理换行等
+    if (!content || typeof content !== 'string') return ''
     return content.replace(/\n/g, '<br>')
 }
+
+// 消息容器DOM引用
+const chatMessagesRef = ref(null)
+
+/** 滚动聊天面板到最底部 */
+const scrollChatToBottom = async () => {
+    await nextTick()
+    if (chatMessagesRef.value) {
+        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
+    }
+}
+
+watch(
+    message,
+    () => {
+        scrollChatToBottom()
+    },
+    { deep: true }
+)
 </script>
 
 <style lang="scss" scoped>
@@ -1038,6 +1000,52 @@ const formatMessageContent = content => {
                 transition: all 0.3s ease;
             }
         }
+    }
+}
+
+/* 动画 */
+@keyframes breathing {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 6px 24px rgba(251, 146, 60, 0.25);
+    }
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 8px 30px rgba(251, 146, 60, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 6px 24px rgba(251, 146, 60, 0.25);
+    }
+}
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes typing {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
     }
 }
 </style>
