@@ -313,7 +313,8 @@ const currentEmotion = ref({
 })
 
 const loadSessionEmotion = async sessionId => {
-    const id = sessionId.toString().startWith('session_') ? sessionId : `session_${sessionId}`
+    console.log('>>> 调用loadSessionEmotion', sessionId)
+    const id = sessionId.toString().startsWith('session_') ? sessionId : `session_${sessionId}`
     try {
         const data = await getSessionEmotion(id)
         currentEmotion.value = data
@@ -521,10 +522,11 @@ const startAIResponse = (sessionId, userMessage) => {
                 isAiTying.value = false
                 // ✨关闭本条消息的流式状态，模板就不再渲染“正在输入”动画
                 aiMsgItem.isStreaming = false
-                // 手动中断SSE连接
-                ctrl.abort()
                 // 进行情绪分析
                 loadSessionEmotion(currentSession.value.sessionId)
+                // 手动中断SSE连接
+                ctrl.abort()
+
                 return
             }
 
@@ -554,9 +556,10 @@ const startAIResponse = (sessionId, userMessage) => {
         },
         // SSE连接关闭回调
         onclose: () => {
+            // 进行情绪分析
+            loadSessionEmotion(currentSession.value.sessionId)
             // 清空全局中断控制器
             globalAbortCtrl = null
-            loadSessionEmotion(currentSession.value.sessionId)
         },
     })
 }
