@@ -29,3 +29,8 @@ export const getSessionEmotion = sessionId => {
 export const addEmotionDiary = data => {
     return service.post('/emotion-diary', data)
 }
+
+// 查询文章列表
+export const getKnowledgeList = data => {
+    return service.post('/knowledge/article/page', data)
+}
