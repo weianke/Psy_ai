@@ -66,6 +66,17 @@
                             </div>
                         </div>
                     </div>
+                    <!-- 风险提示 -->
+                    <div
+                        class="risk-notice"
+                        v-if="currentEmotion.isNegation && currentEmotion.riskLevel > 1"
+                    >
+                        <div class="notice-icon">🤗</div>
+                        <div class="notice-content">
+                            <div class="notice-title">温馨提示</div>
+                            <div class="notice-text">{{ currentEmotion.riskDescription }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <!-- 会话列表 -->
@@ -248,7 +259,13 @@
 
 <script setup>
 import { onMounted, ref, watch, nextTick } from 'vue'
-import { startSession, getSessionList, deleteSession, getSessionDetail } from '@/api/frontend'
+import {
+    startSession,
+    getSessionList,
+    deleteSession,
+    getSessionDetail,
+    getSessionEmotion,
+} from '@/api/frontend'
 import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
@@ -292,7 +309,18 @@ const currentEmotion = ref({
     riskLevel: 0,
     suggestion: '情绪状态平稳',
     improvementSuggestion: [],
+    riskDescription: '暂无风险提示',
 })
+
+const loadSessionEmotion = async sessionId => {
+    const id = sessionId.toString().startWith('session_') ? sessionId : `session_${sessionId}`
+    try {
+        const data = await getSessionEmotion(id)
+        currentEmotion.value = data
+    } catch (error) {
+        console.error('获取情绪花园数据失败:', error)
+    }
+}
 
 const getIntensityClass = score => {
     if (score >= 61) {
@@ -495,6 +523,8 @@ const startAIResponse = (sessionId, userMessage) => {
                 aiMsgItem.isStreaming = false
                 // 手动中断SSE连接
                 ctrl.abort()
+                // 进行情绪分析
+                loadSessionEmotion(currentSession.value.sessionId)
                 return
             }
 
@@ -526,6 +556,7 @@ const startAIResponse = (sessionId, userMessage) => {
         onclose: () => {
             // 清空全局中断控制器
             globalAbortCtrl = null
+            loadSessionEmotion(currentSession.value.sessionId)
         },
     })
 }
@@ -608,6 +639,8 @@ const handleSessionClick = async session => {
             sessionTitle: session.sessionTitle,
         }
         currentSession.value = sessionData
+
+        loadSessionEmotion(session.id)
     } catch (error) {
         console.error('获取历史会话详情失败:', error)
     }
