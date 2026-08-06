@@ -10,6 +10,64 @@
                 <div class="assistant-name">AI助手</div>
                 <div class="online-status"><span class="status-dot"></span>在线服务中</div>
             </div>
+            <!-- 情绪花园 -->
+            <div class="emotion-garden">
+                <div class="garden-header">
+                    <div class="garden-title">情绪花园</div>
+                </div>
+                <div class="emotion-info">
+                    <div class="emotion-name">{{ currentEmotion.primaryEmotion }}</div>
+                    <div class="emotion-score">{{ currentEmotion.emotionScore }}</div>
+                </div>
+                <div class="warm-tips">
+                    <div class="emotion-status-text">
+                        <span class="status-label">今天感觉</span>
+                        <span class="status-emotion">{{
+                            currentEmotion.isNegation ? '需要关注' : '很不错'
+                        }}</span>
+                    </div>
+                    <div class="emotion-intensity">
+                        <span class="intensity-dots">
+                            <span
+                                v-for="dot in 3"
+                                :key="dot"
+                                class="dot"
+                                :class="{
+                                    active: getIntensityClass(currentEmotion.emotionScore) >= dot,
+                                }"
+                            ></span>
+                            <span class="intensity-text">{{
+                                getRiskText(currentEmotion.riskLevel)
+                            }}</span>
+                        </span>
+                    </div>
+                    <!-- 温暖建议卡片 -->
+                    <div class="warm-suggestion" v-if="!!currentEmotion.suggestion">
+                        <div class="suggestion-icon">💝</div>
+                        <div class="suggestion-content">
+                            <div class="suggestion-title">给你的小建议</div>
+                            <div class="suggestion-text">{{ currentEmotion.suggestion }}</div>
+                        </div>
+                    </div>
+                    <!-- 治愈小行动 -->
+                    <div
+                        class="healing-actions"
+                        v-if="currentEmotion.improvementSuggestion.length > 0"
+                    >
+                        <div class="actions-title">治愈小行动</div>
+                        <div class="actions-list">
+                            <div
+                                class="actions-item"
+                                v-for="action in currentEmotion.improvementSuggestion"
+                                :key="action"
+                            >
+                                <div class="action-icon">✨</div>
+                                <div class="action-text">{{ action }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- 会话列表 -->
             <div class="session-history">
                 <h4 class="session-title">会话列表</h4>
@@ -226,6 +284,42 @@ let isNormalEnd = false
 const currentSession = ref(null)
 // 侧边栏会话列表数组，渲染历史对话列表
 const sessionList = ref([])
+// 情绪花园
+const currentEmotion = ref({
+    primaryEmotion: '中性',
+    emotionScore: 50,
+    isNegation: false,
+    riskLevel: 0,
+    suggestion: '情绪状态平稳',
+    improvementSuggestion: [],
+})
+
+const getIntensityClass = score => {
+    if (score >= 61) {
+        return 3
+    }
+
+    if (score >= 31) {
+        return 2
+    }
+
+    return 1
+}
+
+const getRiskText = riskLevel => {
+    switch (riskLevel) {
+        case 0:
+            return '正常'
+        case 1:
+            return '需关注'
+        case 2:
+            return '预警'
+        case 3:
+            return '危机'
+        default:
+            return '正常'
+    }
+}
 
 // ========== 事件处理函数 ==========
 /**
@@ -819,7 +913,8 @@ watch(
                     gap: 8px;
                     .intensity-dots {
                         display: flex;
-                        gap: 4px;
+                        align-items: center;
+                        gap: 6px;
                         .dot {
                             width: 8px;
                             height: 8px;
