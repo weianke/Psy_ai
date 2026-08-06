@@ -1202,7 +1202,7 @@ watch(
             padding: 20px 24px;
             display: flex;
             gap: 12px;
-            align-items: flex-end;
+            align-items: flex-start;
             background: linear-gradient(
                 135deg,
                 rgba(255, 255, 255, 0.5) 0%,
